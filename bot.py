@@ -4,6 +4,7 @@ from discord import app_commands
 import os
 from dotenv import load_dotenv
 import logging
+import asyncio
 from database import DatabaseManager
 from brain import BotBrain
 
@@ -20,7 +21,7 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
 class LearningBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.default()
-        intents.message_content = True
+        intents.message_content = True  # Required to read messages for learning
         super().__init__(command_prefix="!", intents=intents)
         
         self.db = DatabaseManager()
@@ -43,7 +44,7 @@ class LearningBot(commands.Bot):
         if message.author == self.user:
             return
 
-        # 1. Privacy First: Check if user is opted-in
+        # 1. Privacy First: Check if we should learn from this message
         is_opted_in = await self.db.is_opted_in(message.author.id)
         if is_opted_in:
             # Clean up message (strip pings etc maybe)
@@ -60,10 +61,27 @@ class LearningBot(commands.Bot):
 
         if should_respond:
             context = await self.db.get_random_learned_messages(limit=15)
+            
+            # Fetch recent history for more context
+            history = []
+            try:
+                # Fetch last 10 messages, excluding the current one
+                async for msg in message.channel.history(limit=11):
+                    if msg.id == message.id:
+                        continue
+                    # Format as "[Username]: [Message]"
+                    history.append(f"{msg.author.name}: {msg.clean_content}")
+                
+                # Reverse to get chronological order (top to bottom)
+                history.reverse()
+            except Exception as e:
+                logger.error(f"Error fetching history: {e}")
+
             if context:
                 async with message.channel.typing():
                     response = await self.brain.generate_response(
                         context, 
+                        conversation_history=history,
                         user_message=message.clean_content
                     )
                     
