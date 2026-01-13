@@ -1,0 +1,12 @@
+[project]
+name = "chatbot"
+version = "0.1.0"
+description = "A Discord ai chatbot with user opt-in learning capabilities."
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "aiosqlite>=0.22.1",
+    "discord-py>=2.6.4",
+    "ollama>=0.6.1",
+    "python-dotenv>=1.2.1",
+]
