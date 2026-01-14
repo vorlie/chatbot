@@ -4,7 +4,6 @@ from discord import app_commands
 import os
 from dotenv import load_dotenv
 import logging
-import asyncio
 from database import DatabaseManager
 from brain import BotBrain
 
@@ -54,10 +53,11 @@ class LearningBot(commands.Bot):
                 # logger.info(f"Learned from {message.author.name}")
 
         is_mentioned = self.user.mentioned_in(message) and not message.mention_everyone
+        is_other_bot = message.author.id == 1336477279110561802  # Respond to miku
         random_roll = self.brain.should_trigger(self.response_chance)
         
         # Combine them into one clear variable
-        should_respond = is_mentioned or random_roll
+        should_respond = is_mentioned or is_other_bot or random_roll
 
         if should_respond:
             context = await self.db.get_random_learned_messages(limit=15)
@@ -132,6 +132,38 @@ async def stats(interaction: discord.Interaction):
     embed.add_field(name="Total Memory", value=f"💬 `{total_msgs}`", inline=True)
     embed.set_footer(text=f"Requested by {interaction.user.name}")
     await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="clear_all_messages", description="⚠️ Delete ALL learned messages (owner only)")
+async def clear_all_messages(interaction: discord.Interaction):
+    # Check if user is bot owner
+    if interaction.user.id != interaction.client.owner_id:
+        await interaction.response.send_message("❌ You need to be the bot owner to use this command.", ephemeral=True)
+        return
+    
+    await bot.db.clear_all_messages()
+    await interaction.response.send_message("🧹 All learned messages have been cleared!", ephemeral=True)
+
+@bot.tree.command(name="clear_messages_before", description="⚠️ Delete messages before a specific date (owner only)")
+@app_commands.describe(timestamp="Timestamp in format: YYYY-MM-DD or YYYY-MM-DD HH:MM:SS")
+async def clear_messages_before(interaction: discord.Interaction, timestamp: str):
+    # Check if user is bot owner
+    if interaction.user.id != interaction.client.owner_id:
+        await interaction.response.send_message("❌ You need to be the bot owner to use this command.", ephemeral=True)
+        return
+    
+    count = await bot.db.clear_messages_before(timestamp)
+    await interaction.response.send_message(f"🧹 Deleted {count} messages from before {timestamp}!", ephemeral=True)
+
+@bot.tree.command(name="clear_messages_after", description="⚠️ Delete messages after a specific date (owner only)")
+@app_commands.describe(timestamp="Timestamp in format: YYYY-MM-DD or YYYY-MM-DD HH:MM:SS")
+async def clear_messages_after(interaction: discord.Interaction, timestamp: str):
+    # Check if user is bot owner
+    if interaction.user.id != interaction.client.owner_id:
+        await interaction.response.send_message("❌ You need to be the bot owner to use this command.", ephemeral=True)
+        return
+    
+    count = await bot.db.clear_messages_after(timestamp)
+    await interaction.response.send_message(f"🧹 Deleted {count} messages from after {timestamp}!", ephemeral=True)
 
 if __name__ == "__main__":
     if not DISCORD_TOKEN or DISCORD_TOKEN == "YOUR_BOT_TOKEN_HERE":

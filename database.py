@@ -87,3 +87,32 @@ class DatabaseManager:
                 top_contributors = await cursor.fetchall()
                 
             return opted_in_count, total_messages, top_contributors
+
+    async def clear_all_messages(self):
+        """Delete all learned messages from the database."""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("DELETE FROM learned_messages")
+            await db.commit()
+            logger.info("All learned messages have been cleared.")
+
+    async def clear_messages_before(self, timestamp: str) -> int:
+        """Delete messages before a specific timestamp. Returns count of deleted messages."""
+        async with aiosqlite.connect(self.db_path) as db:
+            async with db.execute("SELECT COUNT(*) FROM learned_messages WHERE timestamp < ?", (timestamp,)) as c:
+                count = (await c.fetchone())[0]
+            
+            await db.execute("DELETE FROM learned_messages WHERE timestamp < ?", (timestamp,))
+            await db.commit()
+            logger.info(f"Deleted {count} messages before {timestamp}.")
+            return count
+
+    async def clear_messages_after(self, timestamp: str) -> int:
+        """Delete messages after a specific timestamp. Returns count of deleted messages."""
+        async with aiosqlite.connect(self.db_path) as db:
+            async with db.execute("SELECT COUNT(*) FROM learned_messages WHERE timestamp > ?", (timestamp,)) as c:
+                count = (await c.fetchone())[0]
+            
+            await db.execute("DELETE FROM learned_messages WHERE timestamp > ?", (timestamp,))
+            await db.commit()
+            logger.info(f"Deleted {count} messages after {timestamp}.")
+            return count
