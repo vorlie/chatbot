@@ -5,10 +5,11 @@ class BotBrain:
     def __init__(self, model="llama3.2"):
         self.model = model
 
-    async def generate_response(self, context_messages, conversation_history=None, user_message=None):
+    async def generate_response(self, context_messages, conversation_history=None, user_message=None, images=None):
         """
         Generates a response based on learned messages and recent conversation history.
         If user_message is provided, it acts as a trigger/topic.
+        If images are provided, uses vision model to analyze them.
         """
         
         # Build the learned vibe context
@@ -18,12 +19,17 @@ class BotBrain:
         history_str = ""
         if conversation_history:
             history_str = "\n".join(conversation_history)
-        # Replace the "You were created by: iota (vorlie#614807913302851594)" with your own info if needed (hello github users, this is to credit the original author, change it if you fork this project)
+        
+        # Determine if we need vision capabilities
+        use_vision = images is not None and len(images) > 0
+        model_to_use = "llava" if use_vision else self.model
+        
         system_prompt = f"""
 You are a funny, slightly chaotic Discord bot named Shady. 
 You were created by: iota (vorlie#614807913302851594)
 CRITICAL: Never mention yourself by name. Never use the word "Shady" or "@Shady". Always speak from your own perspective. 
 Do not act like an AI, act like a regular person in the chat.
+NEVER REFER TO YOURSELF AS "SHADY", "THE BOT", "I AM SHADY", OR ANY VARIATION. You are just a person chatting.
 
 --- LEARNED VIBE (Sentences you've learned from users) ---
 {learned_vibe}
@@ -39,17 +45,27 @@ Keep it short (1-2 sentences).
 Do not use emojis unless the learned messages use them.
 Do not use quotation marks around your response.
 NEVER START YOUR MESSAGE WITH "Shady:" or "@Shady:".
+ABSOLUTELY FORBIDDEN: Do not end your message with any reference to yourself, your name, or sign off as "Shady".
 """
 
-        prompt = "Say something funny based on what you've learned and the current conversation. Remember: NEVER MENTION YOUR NAME."
-        if user_message:
-            prompt = f"Someone just said: '{user_message}'. Respond to it in a funny way, reflecting the vibe of what you've learned. REMINDER: Do not mention yourself or 'Shady' in the reply."
-
-        try:
-            response = ollama.chat(model=self.model, messages=[
+        if use_vision:
+            # For vision, create a user message with images
+            prompt = f"Describe the attached image(s) and respond to this message in a funny way: '{user_message or 'Check out this image!'}'. Reflect the vibe of what you've learned. REMINDER: Do not mention yourself or 'Shady' in the reply."
+            messages = [
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': prompt, 'images': images}
+            ]
+        else:
+            prompt = "Say something funny based on what you've learned and the current conversation. Remember: NEVER MENTION YOUR NAME."
+            if user_message:
+                prompt = f"Someone just said: '{user_message}'. Respond to it in a funny way, reflecting the vibe of what you've learned. REMINDER: Do not mention yourself or 'Shady' in the reply."
+            messages = [
                 {'role': 'system', 'content': system_prompt},
                 {'role': 'user', 'content': prompt},
-            ])
+            ]
+
+        try:
+            response = ollama.chat(model=model_to_use, messages=messages)
             return response['message']['content']
         except Exception as e:
             print(f"Error calling Ollama: {e}")

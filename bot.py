@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 import logging
 from database import DatabaseManager
 from brain import BotBrain
+import aiohttp
+import base64
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -57,8 +59,27 @@ class LearningBot(commands.Bot):
         is_other_bot = message.author.id == 1336477279110561802  # Respond to miku
         random_roll = self.brain.should_trigger(self.response_chance)
         
+        # Check for images (only if user is opted in for privacy)
+        images = []
+        if is_opted_in and message.attachments:
+            for attachment in message.attachments:
+                if attachment.content_type and attachment.content_type.startswith('image/'):
+                    try:
+                        async with aiohttp.ClientSession() as session:
+                            async with session.get(attachment.url) as resp:
+                                if resp.status == 200:
+                                    image_data = await resp.read()
+                                    # Limit to 1MB to avoid issues
+                                    if len(image_data) <= 1024 * 1024:
+                                        b64_image = base64.b64encode(image_data).decode('utf-8')
+                                        images.append(b64_image)
+                                    else:
+                                        logger.warning(f"Image too large from {message.author.name}: {len(image_data)} bytes")
+                    except Exception as e:
+                        logger.error(f"Error downloading image: {e}")
+        
         # Combine them into one clear variable
-        should_respond = is_mentioned or is_other_bot or random_roll
+        should_respond = is_mentioned or is_other_bot or random_roll or (len(images) > 0 and is_opted_in)
 
         if should_respond:
             context = await self.db.get_random_learned_messages(limit=15)
@@ -83,7 +104,8 @@ class LearningBot(commands.Bot):
                     response = await self.brain.generate_response(
                         context, 
                         conversation_history=history,
-                        user_message=message.clean_content
+                        user_message=message.clean_content,
+                        images=images if images else None
                     )
                     
                     if response:
@@ -165,7 +187,21 @@ async def clear_messages_after(interaction: discord.Interaction, timestamp: str)
     
     count = await bot.db.clear_messages_after(timestamp)
     await interaction.response.send_message(f"🧹 Deleted {count} messages from after {timestamp}!", ephemeral=True)
-
+@bot.tree.command(name="pull_vision_model", description="Pull the LLaVA vision model for image analysis (owner only)")
+async def pull_vision_model(interaction: discord.Interaction):
+    # Check if user is bot owner
+    if interaction.user.id != BOT_OWNER_ID:
+        await interaction.response.send_message("❌ You need to be the bot owner to use this command.", ephemeral=True)
+        return
+    
+    await interaction.response.defer()
+    try:
+        import ollama
+        await interaction.followup.send("🔄 Pulling LLaVA model... This may take a while.")
+        ollama.pull("llava")
+        await interaction.followup.send("✅ LLaVA model pulled successfully!")
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error pulling model: {e}")
 if __name__ == "__main__":
     if not DISCORD_TOKEN or DISCORD_TOKEN == "YOUR_BOT_TOKEN_HERE":
         logger.error("No discord token found in .env! Please set it.")
