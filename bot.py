@@ -159,7 +159,7 @@ async def clear_messages_before(interaction: discord.Interaction, timestamp: str
 @app_commands.describe(timestamp="Timestamp in format: YYYY-MM-DD or YYYY-MM-DD HH:MM:SS")
 async def clear_messages_after(interaction: discord.Interaction, timestamp: str):
     # Check if user is bot owner
-    if interaction.user.id != interaction.client.owner_id:
+    if interaction.user.id != BOT_OWNER_ID:
         await interaction.response.send_message("❌ You need to be the bot owner to use this command.", ephemeral=True)
         return
     
