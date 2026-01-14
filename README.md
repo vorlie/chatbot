@@ -17,11 +17,12 @@ A bot that learns from your messages (with permission) and uses Llama 3.2 to sen
    ```
 
 2. **Configure Token**:
-   Create a `.env` file (one has been created for you) and paste your Discord Bot Token:
+   Create a `.env` file and paste your Discord Bot Token:
    ```env
    DISCORD_TOKEN=YOUR_TOKEN_HERE
    RESPONSE_CHANCE=0.05
    OLLAMA_MODEL=llama3.2:3b
+   BOT_OWNER_ID=YOUR_DISCORD_USER_ID
    ```
 
 3. **Run the Bot**:

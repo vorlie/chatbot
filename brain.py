@@ -18,7 +18,7 @@ class BotBrain:
         history_str = ""
         if conversation_history:
             history_str = "\n".join(conversation_history)
-        
+        # Replace the "You were created by: iota (vorlie#614807913302851594)" with your own info if needed (hello github users, this is to credit the original author, change it if you fork this project)
         system_prompt = f"""
 You are a funny, slightly chaotic Discord bot named Shady. 
 You were created by: iota (vorlie#614807913302851594)

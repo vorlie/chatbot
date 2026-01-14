@@ -16,6 +16,7 @@ load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 RESPONSE_CHANCE = float(os.getenv("RESPONSE_CHANCE", 0.05))
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+BOT_OWNER_ID = int(os.getenv("BOT_OWNER_ID"))  # Replace with actual owner ID
 
 class LearningBot(commands.Bot):
     def __init__(self):
@@ -136,7 +137,7 @@ async def stats(interaction: discord.Interaction):
 @bot.tree.command(name="clear_all_messages", description="⚠️ Delete ALL learned messages (owner only)")
 async def clear_all_messages(interaction: discord.Interaction):
     # Check if user is bot owner
-    if interaction.user.id != interaction.client.owner_id:
+    if interaction.user.id != BOT_OWNER_ID:
         await interaction.response.send_message("❌ You need to be the bot owner to use this command.", ephemeral=True)
         return
     
@@ -147,7 +148,7 @@ async def clear_all_messages(interaction: discord.Interaction):
 @app_commands.describe(timestamp="Timestamp in format: YYYY-MM-DD or YYYY-MM-DD HH:MM:SS")
 async def clear_messages_before(interaction: discord.Interaction, timestamp: str):
     # Check if user is bot owner
-    if interaction.user.id != interaction.client.owner_id:
+    if interaction.user.id != BOT_OWNER_ID:
         await interaction.response.send_message("❌ You need to be the bot owner to use this command.", ephemeral=True)
         return
     
