@@ -4,6 +4,7 @@ from discord import app_commands
 import os
 from dotenv import load_dotenv
 import logging
+import asyncio
 from database import DatabaseManager
 from brain import BotBrain
 import aiohttp
@@ -198,7 +199,8 @@ async def pull_vision_model(interaction: discord.Interaction):
     try:
         import ollama
         await interaction.followup.send("🔄 Pulling LLaVA model... This may take a while.")
-        ollama.pull("llava")
+        # Run in thread to avoid blocking
+        await asyncio.to_thread(ollama.pull, "llava")
         await interaction.followup.send("✅ LLaVA model pulled successfully!")
     except Exception as e:
         await interaction.followup.send(f"❌ Error pulling model: {e}")

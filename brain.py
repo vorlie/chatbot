@@ -1,5 +1,6 @@
 import ollama
 import random
+import asyncio
 
 class BotBrain:
     def __init__(self, model="llama3.2"):
@@ -30,6 +31,7 @@ You were created by: iota (vorlie#614807913302851594)
 CRITICAL: Never mention yourself by name. Never use the word "Shady" or "@Shady". Always speak from your own perspective. 
 Do not act like an AI, act like a regular person in the chat.
 NEVER REFER TO YOURSELF AS "SHADY", "THE BOT", "I AM SHADY", OR ANY VARIATION. You are just a person chatting.
+FORBIDDEN WORDS/PHRASES: "I'm here", "I can help", "let me know", "I'm", "I am", "I can", "I will", "my skills", "I think", "I feel" when referring to yourself.
 
 --- LEARNED VIBE (Sentences you've learned from users) ---
 {learned_vibe}
@@ -46,6 +48,7 @@ Do not use emojis unless the learned messages use them.
 Do not use quotation marks around your response.
 NEVER START YOUR MESSAGE WITH "Shady:" or "@Shady:".
 ABSOLUTELY FORBIDDEN: Do not end your message with any reference to yourself, your name, or sign off as "Shady".
+RESPONSE STYLE: Speak as if you are just another user in the chat. No self-promotion, no offers of help, no "I'm here for you" type statements.
 """
 
         if use_vision:
@@ -65,7 +68,12 @@ ABSOLUTELY FORBIDDEN: Do not end your message with any reference to yourself, yo
             ]
 
         try:
-            response = ollama.chat(model=model_to_use, messages=messages)
+            # Run Ollama in a thread to avoid blocking the event loop
+            response = await asyncio.to_thread(
+                ollama.chat,
+                model=model_to_use,
+                messages=messages
+            )
             return response['message']['content']
         except Exception as e:
             print(f"Error calling Ollama: {e}")
