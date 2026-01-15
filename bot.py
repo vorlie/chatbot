@@ -30,13 +30,16 @@ class LearningBot(commands.Bot):
         self.db = DatabaseManager()
         self.brain = BotBrain(model=OLLAMA_MODEL)
         self.response_chance = RESPONSE_CHANCE
+        self.vision_enabled = True  # Will be loaded from DB
 
     async def setup_hook(self):
         # Initialize database
         await self.db.initialize()
+        # Load vision setting
+        self.vision_enabled = await self.db.get_vision_enabled()
         # Sync slash commands
         await self.tree.sync()
-        logger.info("Bot setup complete and slash commands synced.")
+        logger.info(f"Bot setup complete. Vision: {'enabled' if self.vision_enabled else 'disabled'}. Slash commands synced.")
 
     async def on_ready(self):
         logger.info(f"Logged in as {self.user} (ID: {self.user.id})")
@@ -60,9 +63,9 @@ class LearningBot(commands.Bot):
         is_other_bot = message.author.id == 1336477279110561802  # Respond to miku
         random_roll = self.brain.should_trigger(self.response_chance)
         
-        # Check for images (only if user is opted in for privacy)
+        # Check for images (only if user is opted in and vision is enabled)
         images = []
-        if is_opted_in and message.attachments:
+        if is_opted_in and self.vision_enabled and message.attachments:
             for attachment in message.attachments:
                 if attachment.content_type and attachment.content_type.startswith('image/'):
                     try:
@@ -80,7 +83,7 @@ class LearningBot(commands.Bot):
                         logger.error(f"Error downloading image: {e}")
         
         # Combine them into one clear variable
-        should_respond = is_mentioned or is_other_bot or random_roll or (len(images) > 0 and is_opted_in)
+        should_respond = is_mentioned or is_other_bot or random_roll or (len(images) > 0 and is_opted_in and self.vision_enabled)
 
         if should_respond:
             context = await self.db.get_random_learned_messages(limit=15)
@@ -204,6 +207,26 @@ async def pull_vision_model(interaction: discord.Interaction):
         await interaction.followup.send("✅ LLaVA model pulled successfully!")
     except Exception as e:
         await interaction.followup.send(f"❌ Error pulling model: {e}")
+@bot.tree.command(name="toggle_vision", description="Toggle image vision processing on/off (owner only)")
+async def toggle_vision(interaction: discord.Interaction):
+    # Check if user is bot owner
+    if interaction.user.id != BOT_OWNER_ID:
+        await interaction.response.send_message("❌ You need to be the bot owner to use this command.", ephemeral=True)
+        return
+    
+    # Toggle the setting
+    new_state = not bot.vision_enabled
+    await bot.db.set_vision_enabled(new_state)
+    bot.vision_enabled = new_state
+    
+    status = "enabled" if new_state else "disabled"
+    await interaction.response.send_message(f"🖼️ Vision processing has been **{status}**!", ephemeral=True)
+
+@bot.tree.command(name="vision_status", description="Check if vision processing is enabled")
+async def vision_status(interaction: discord.Interaction):
+    status = "enabled" if bot.vision_enabled else "disabled"
+    await interaction.response.send_message(f"🖼️ Vision processing is currently **{status}**", ephemeral=True)
+
 if __name__ == "__main__":
     if not DISCORD_TOKEN or DISCORD_TOKEN == "YOUR_BOT_TOKEN_HERE":
         logger.error("No discord token found in .env! Please set it.")

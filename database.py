@@ -25,6 +25,13 @@ class DatabaseManager:
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            # Table for bot settings
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS bot_settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT
+                )
+            """)
             # Index for faster user-based lookups
             await db.execute("CREATE INDEX IF NOT EXISTS idx_user_id ON learned_messages(user_id)")
             # Index for timestamp if we want to fetch recent messages
@@ -116,3 +123,20 @@ class DatabaseManager:
             await db.commit()
             logger.info(f"Deleted {count} messages after {timestamp}.")
             return count
+
+    async def get_vision_enabled(self) -> bool:
+        """Get whether vision processing is enabled."""
+        async with aiosqlite.connect(self.db_path) as db:
+            async with db.execute("SELECT value FROM bot_settings WHERE key = 'vision_enabled'") as cursor:
+                row = await cursor.fetchone()
+                return bool(int(row[0])) if row else True  # Default to True
+
+    async def set_vision_enabled(self, enabled: bool):
+        """Set whether vision processing is enabled."""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                INSERT INTO bot_settings (key, value)
+                VALUES ('vision_enabled', ?)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """, (1 if enabled else 0,))
+            await db.commit()

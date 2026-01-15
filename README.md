@@ -5,7 +5,7 @@ A chaotic, funny Discord bot that learns from your messages (with permission) an
 ## ✨ Features
 
 - **AI-Powered Responses**: Uses Llama 3.2 for generating funny, context-aware messages
-- **Image Vision**: Analyzes images using LLaVA and responds with witty commentary
+- **Image Vision**: Analyzes images using LLaVA and responds with witty commentary (toggleable)
 - **Learning System**: Learns from opted-in users to match your community's vibe
 - **Privacy-First**: Only learns from users who explicitly opt-in
 - **Random Responses**: Occasional spontaneous replies (configurable chance)
@@ -67,6 +67,8 @@ The bot will:
 ### For Bot Owner
 
 - **Pull Vision Model**: `/pull_vision_model` (downloads LLaVA)
+- **Toggle Vision**: `/toggle_vision` (enable/disable image processing)
+- **Vision Status**: `/vision_status` (check if vision is enabled)
 - **Clear All Messages**: `/clear_all_messages`
 - **Clear Messages Before Date**: `/clear_messages_before timestamp:2026-01-01`
 - **Clear Messages After Date**: `/clear_messages_after timestamp:2026-01-01`
